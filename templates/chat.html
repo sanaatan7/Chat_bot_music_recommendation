@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Music Chatbot</title>
+    <style>
+        /* General Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.dark-mode {
+    background-color: #1e1e1e;
+    color: #f5f5f5;
+}
+
+/* Theme Toggle Button */
+#themeToggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+#themeToggle:hover {
+    transform: scale(1.2);
+}
+
+/* Heading */
+h1 {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    color: #ff6f61;
+}
+
+/* Chatbox */
+#chatbox {
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+    height: 400px;
+    overflow-y: auto;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.dark-mode #chatbox {
+    background-color: #2c2c2c;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+#chatbox p {
+    margin: 0 0 10px;
+    line-height: 1.5;
+}
+
+#chatbox p strong {
+    color: #ff6f61;
+}
+
+/* Song Recommendations */
+.song {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    transition: background-color 0.3s ease;
+}
+
+body.dark-mode .song {
+    background-color: #3a3a3a;
+}
+
+.song img {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    margin-right: 15px;
+}
+
+.song a {
+    color: #333;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+body.dark-mode .song a {
+    color: #f5f5f5;
+}
+
+.song a:hover {
+    color: #ff6f61;
+}
+
+/* Loading Indicator */
+#loading {
+    text-align: center;
+    font-size: 1.2rem;
+    margin: 20px 0;
+    display: none;
+}
+
+/* User Input Form */
+#chatForm {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+#chatForm input[type="text"] {
+    width: 70%;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+body.dark-mode #chatForm input[type="text"] {
+    background-color: #3a3a3a;
+    border-color: #555;
+    color: #f5f5f5;
+}
+
+#chatForm input[type="text"]:focus {
+    border-color: #ff6f61;
+}
+
+#chatForm button {
+    padding: 10px 20px;
+    background-color: #ff6f61;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#chatForm button:hover {
+    background-color: #ff4a3d;
+    transform: scale(1.05);
+}
+
+#chatForm button:active {
+    transform: scale(0.95);
+}
+    </style>
+</head>
+<body>
+    <button id="themeToggle" onclick="toggleDarkMode()">🌙</button>
+    <h1>Chat with Music Bot 🎵</h1>
+    
+    <!-- Chat messages will appear here -->
+    <div id="chatbox">
+        <p>Bot: Hi! What music mood are you in today?</p>
+        {% if bot_response %}
+            <p><strong>{{ bot_response }}</strong></p>
+            {% if song_data %}
+                <div>
+                    {% for name, url, art in song_data %}
+                        <div class="song">
+                            <img src="{{ art }}" alt="Album Art">
+                            <a href="{{ url }}" target="_blank">{{ name }}</a>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loading">Loading...</div>
+
+    <!-- User input form -->
+    <form id="chatForm" onsubmit="submitForm(event)">
+        <input type="text" id="user_message" name="user_message" placeholder="Type here...">
+        <button type="submit">Search</button>
+    </form>
+
+    <script>
+        function submitForm(event) {
+            event.preventDefault(); // Prevent page reload
+            const chatbox = document.getElementById('chatbox');
+            const loading = document.getElementById('loading');
+            const userMessage = document.getElementById('user_message').value;
+
+            // Show loading indicator
+            loading.style.display = 'block';
+
+            // Send data to the server
+            fetch('/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `user_message=${encodeURIComponent(userMessage)}`,
+            })
+            .then(response => response.text())
+            .then(data => {
+                // Replace the chatbox content with the new response
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(data, 'text/html');
+                const newChatbox = doc.getElementById('chatbox').innerHTML;
+                chatbox.innerHTML = newChatbox;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                // Hide loading indicator
+                loading.style.display = 'none';
+            });
+        }
+        if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('themeToggle').textContent = '☀️';
+    }
+
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('darkMode', isDark);
+        document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
+    }
+    </script>
+</body>
+</html>
